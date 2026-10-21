@@ -1,0 +1,12 @@
+{
+  "name": "gh-pixel-editor",
+  "private": true,
+  "type": "module",
+  "description": "Static pixel-art sprite editor for GitHub Actions log art. No runtime dependencies, no build step.",
+  "scripts": {
+    "test": "node --test",
+    "fixtures": "node scripts/gen-fixtures.mjs",
+    "sync-spec": "node scripts/sync-spec.mjs",
+    "serve": "node scripts/serve.mjs"
+  }
+}

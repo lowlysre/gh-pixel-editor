@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gh-pixel-editor</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>gh-pixel-editor</h1>
+  <input id="name" aria-label="Sprite name" size="14" spellcheck="false">
+  <label><input type="checkbox" id="mirrorExport"> export as mirrored half</label>
+  <span class="grow"></span>
+  <button id="undo" title="Ctrl+Z">Undo</button>
+  <button id="redo" title="Ctrl+Y">Redo</button>
+  <button id="importBtn">Import JSON</button>
+  <input type="file" id="importFile" accept=".json,application/json" hidden>
+  <button id="exportJson">Export JSON</button>
+  <button id="exportSvg">Export SVG</button>
+  <select id="ansiTarget" aria-label="ANSI target"><option value="solid">solid</option><option value="half">half</option></select>
+  <button id="copyAnsi">Copy ANSI</button>
+</header>
+<main>
+  <section id="left">
+    <div id="tools">
+      <button data-tool="pencil" title="P">Pencil</button>
+      <button data-tool="erase" title="E">Erase</button>
+      <button data-tool="fill" title="F">Fill</button>
+      <button data-tool="pick" title="I">Pick</button>
+      <button id="mirrorDraw" title="M">Mirror: off</button>
+    </div>
+    <div id="palette" role="listbox" aria-label="xterm-256 palette"></div>
+    <div id="selInfo"></div>
+    <div class="row">
+      <label>W <input type="number" id="gw" min="2" max="64" value="16"></label>
+      <label>H <input type="number" id="gh" min="2" max="64" value="16"></label>
+      <button id="resize">Resize</button>
+      <button id="newBtn">New</button>
+    </div>
+  </section>
+  <section id="center">
+    <canvas id="grid"></canvas>
+    <div id="status"></div>
+  </section>
+  <section id="right">
+    <h2>Legend</h2>
+    <div class="row">
+      <label>Palette tier <select id="tier"></select></label>
+      <button id="addTier">+ tier</button>
+      <button id="delTier">- tier</button>
+    </div>
+    <div id="legend"></div>
+    <div class="row">
+      <input id="newChar" maxlength="1" size="2" aria-label="New legend character" placeholder="c">
+      <button id="addChar">Add char</button>
+    </div>
+    <h2>Lighting</h2>
+    <div class="row">
+      <label>dither <input type="number" id="dither" min="0" step="0.1"></label>
+      <label>rim <input type="number" id="rim" min="0" step="0.1"></label>
+    </div>
+    <h2>Lint <span id="lintCount"></span></h2>
+    <ul id="lint"></ul>
+  </section>
+</main>
+<section id="previews">
+  <div><h3>Solid (GitHub log)</h3><canvas id="pvSolid"></canvas></div>
+  <div><h3>Half (terminal)</h3><canvas id="pvHalf"></canvas></div>
+  <div><h3>Half in GitHub log (smear)</h3><canvas id="pvSmear"></canvas></div>
+  <div><h3>Plain</h3><pre id="pvPlain"></pre></div>
+  <div id="pvSettings">
+    <h3>Preview geometry <small>(unverified)</small></h3>
+    <label>cell width px <input type="number" id="cellW" min="4" max="16" step="1"></label>
+    <label>line height px <input type="number" id="lineH" min="8" max="32" step="1"></label>
+    <label>glyph / line ratio <input type="number" id="ratio" min="0.5" max="1" step="0.05"></label>
+    <p>GitHub's log line height and glyph aspect are not measured. Defaults are guesses.</p>
+  </div>
+</section>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

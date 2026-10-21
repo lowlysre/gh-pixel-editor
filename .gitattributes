@@ -1,0 +1,2 @@
+fixtures/* -text
+site/spec/** -text

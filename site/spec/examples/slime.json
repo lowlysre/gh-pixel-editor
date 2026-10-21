@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "name": "slime",
+  "mirror": true,
+  "rows": [
+    "......BBBBBB",
+    "....BBBBBBBB",
+    "...BWBBBBBBB",
+    "..BBWBBBBBBB",
+    "..BBBBEEBBBB",
+    ".BBBBBEEBBBB",
+    ".BBBBBBBBBBB",
+    ".BBBBBBBBBBB",
+    "BBBBBBBBBMMM",
+    "BBBBBBBBBMMM",
+    "BBBBBBBBBBBB",
+    "BBBBBBBBBBBB",
+    "BBBBBBBBBBBB",
+    "BBB.BBBBBBBB",
+    "B...BB.BBBBB",
+    "........B.BB"
+  ],
+  "legend": {
+    "B": [23, 30, 37, 44, 50, 86],
+    "W": [109, 152, 195, 231, 231, 231],
+    "M": [232, 233, 234, 235, 236, 237],
+    "E": 232
+  },
+  "tiers": {
+    "1": { "B": [89, 125, 162, 168, 205, 218] },
+    "2": { "B": [17, 53, 54, 91, 97, 133], "W": [97, 133, 139, 175, 218, 225], "E": 196 }
+  }
+}
