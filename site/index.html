@@ -65,9 +65,9 @@
   </section>
 </main>
 <section id="previews">
-  <div><h3>Solid (GitHub log)</h3><canvas id="pvSolid"></canvas></div>
-  <div><h3>Half (terminal)</h3><canvas id="pvHalf"></canvas></div>
-  <div><h3>Half in GitHub log (smear)</h3><canvas id="pvSmear"></canvas></div>
+  <div><h3>Solid: use in GitHub logs</h3><p class="cap">One colour per text cell. What CI output looks like.</p><canvas id="pvSolid"></canvas></div>
+  <div><h3>Half: in a real terminal</h3><p class="cap">Two colours per cell (top and bottom pixel). Crisp where the glyph fills the line.</p><canvas id="pvHalf"></canvas></div>
+  <div><h3>Half: pasted into a GitHub log</h3><p class="cap">Same output as the terminal, drawn the way the log viewer paints it: the background covers the full line, the glyph only part of it, so cells smear. This is why Solid exists.</p><canvas id="pvSmear"></canvas></div>
   <div><h3>Plain</h3><pre id="pvPlain"></pre></div>
   <div id="pvSettings">
     <h3>Preview geometry <small>(unverified)</small></h3>

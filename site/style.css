@@ -42,3 +42,4 @@ main { display:grid; grid-template-columns:300px minmax(0,1fr) 340px; gap:12px; 
 #pvSettings p { max-width:260px; color:var(--dim); }
 small { color:#d29922; font-weight:normal; }
 @media (max-width:1000px) { main { grid-template-columns:1fr; } }
+.cap { margin:0 0 6px; max-width:260px; color:var(--dim); font-size:12px; }
