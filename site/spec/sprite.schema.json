@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lowlydba/quest-ops/schema/sprite.schema.json",
+  "title": "QuestOps pixel sprite",
+  "description": "A pixel sprite for terminals with 256 colours. See docs/sprite-format.md.",
+  "type": "object",
+  "required": ["version", "name", "rows", "legend"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "mirror": {
+      "type": "boolean",
+      "default": false,
+      "description": "Rows are the left half; the right half is their mirror."
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1, "pattern": "^[^\\s]+$" },
+      "description": "One character per pixel. '.' is transparent. Rows pad with their last character."
+    },
+    "legend": { "$ref": "#/$defs/legend" },
+    "lighting": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dither": { "type": "number", "minimum": 0, "default": 0.9 },
+        "rim": { "type": "number", "minimum": 0, "default": 1.6 }
+      }
+    },
+    "tiers": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[1-9][0-9]*$" },
+      "additionalProperties": { "$ref": "#/$defs/legend" },
+      "description": "Palette variants. Each tier replaces only the legend entries it lists."
+    }
+  },
+  "$defs": {
+    "color": { "type": "integer", "minimum": 0, "maximum": 255 },
+    "legend": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[^\\s.]$" },
+      "additionalProperties": {
+        "oneOf": [
+          { "$ref": "#/$defs/color" },
+          {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": { "$ref": "#/$defs/color" },
+            "description": "Ramp, dark to bright. The renderer lights it."
+          }
+        ]
+      }
+    }
+  }
+}
