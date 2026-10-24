@@ -46,6 +46,7 @@ a.gh:hover { border-color:var(--dim); }
 .menu-items button { border:0; background:none; text-align:left; padding:6px 10px; border-radius:4px; display:flex; justify-content:space-between; gap:16px; }
 .menu-items button:hover { background:var(--raised); }
 .menu-items small { color:var(--dim); font:12px var(--mono); }
+.menu-label { font-size:11px; color:var(--dim); padding:4px 10px 2px; }
 .menu-items hr { border:0; border-top:1px solid var(--line); margin:4px 0; width:100%; }
 
 /* ---- editor layout ---- */
