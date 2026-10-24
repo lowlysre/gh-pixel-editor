@@ -85,7 +85,8 @@ details > summary:hover { color:var(--fg); }
 #status { color:var(--dim); display:flex; gap:16px; min-height:1.45em; font-variant-numeric:tabular-nums; }
 #msg { color:var(--fg); }
 .tip { display:flex; align-items:center; gap:8px; margin:0; padding:6px 6px 6px 12px; max-width:100%; background:var(--acc-bg); border:1px solid #2f81f766; border-radius:6px; }
-.tip button { border:0; background:none; padding:0 6px; font-size:16px; line-height:1; color:var(--dim); }
+.tip a { color:#fff; }
+.tip button { border:0; background:none; padding:0 6px; font-size:16px; line-height:1; color:#c9d1d9; }
 .tip button:hover { color:var(--fg); }
 .mini { display:flex; flex-direction:column; align-items:center; margin-top:8px; }
 .mini h2 { margin:0 0 8px; }

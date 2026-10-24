@@ -1,0 +1,32 @@
+name: Accessibility
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: a11y-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pa11y:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Serve site
+        run: |
+          node scripts/serve.mjs &
+          for _ in $(seq 1 20); do curl -sf http://127.0.0.1:8080/ >/dev/null && exit 0; sleep 0.5; done
+          echo "dev server did not start" >&2
+          exit 1
+      - uses: lowlysre/pa11y-ci-action@84174759cd514bd3ea3bcaa30dc1798dde81f713 # v1.1.0
