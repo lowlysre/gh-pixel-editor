@@ -16,7 +16,7 @@ const slime = JSON.parse(readFileSync(spec("examples/slime.json"), "utf8"));
 test("spec homepage is generated from the current Markdown", () => {
   const md = readFileSync(spec("sprite-format.md"), "utf8");
   const page = readFileSync(join(import.meta.dirname, "..", "site", "index.html"), "utf8");
-  assert.equal(page, buildPage(md), "site/index.html is stale; run npm run build-spec");
+  assert.equal(page.replace(/\r\n/g, "\n"), buildPage(md), "site/index.html is stale; run npm run build-spec");
 });
 
 test("spec Markdown renderer covers the constructs the spec uses", () => {

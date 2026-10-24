@@ -122,7 +122,7 @@ ${body}
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const page = buildPage(readFileSync(SRC, "utf8"));
   if (process.argv.includes("--check")) {
-    if (readFileSync(OUT, "utf8") !== page) {
+    if (readFileSync(OUT, "utf8").replace(/\r\n/g, "\n") !== page) {
       console.error("site/index.html is stale; run npm run build-spec");
       process.exit(1);
     }
