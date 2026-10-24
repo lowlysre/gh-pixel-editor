@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sprite editor · Pixel sprite format for GitHub Actions</title>
+<meta name="description" content="Draw pixel-art sprites that render cleanly in GitHub Actions logs. Previews the log viewer, exports sprite JSON, SVG and ANSI. Runs in the browser, no install.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Pixel sprite editor">
+<meta property="og:description" content="Draw pixel-art sprites that render cleanly in GitHub Actions logs.">
+<meta property="og:url" content="https://lowlysre.github.io/gh-pixel-editor/editor.html">
+<meta name="theme-color" content="#0d1117">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1><a class="brand" href="./" title="Docs home"><img src="favicon.svg" alt="" width="18" height="18"> Sprite editor</a></h1>
+  <input id="name" aria-label="Sprite name (used as the file name)" size="14" spellcheck="false">
+  <span class="grow"></span>
+  <button id="undo" title="Undo (Ctrl+Z)">Undo</button>
+  <button id="redo" title="Redo (Ctrl+Y)">Redo</button>
+  <details class="menu" id="fileMenu">
+    <summary>File</summary>
+    <div class="menu-items">
+      <button id="newBtn">New blank sprite</button>
+      <button id="importBtn">Open JSON…</button>
+      <button id="exampleBtn">Load example</button>
+    </div>
+  </details>
+  <input type="file" id="importFile" accept=".json,application/json" aria-label="Sprite JSON file to open" hidden>
+  <details class="menu" id="exportMenu">
+    <summary class="primary">Export</summary>
+    <div class="menu-items right">
+      <span class="menu-label">Download</span>
+      <button data-export="ansi-solid">ANSI for GitHub logs <small>.ans</small></button>
+      <button data-export="ansi-half">ANSI for terminals <small>.ans</small></button>
+      <button data-export="json">Sprite JSON <small>.json</small></button>
+      <button data-export="svg">SVG image <small>.svg</small></button>
+      <hr>
+      <button data-export="copy-solid">Copy ANSI for GitHub logs</button>
+    </div>
+  </details>
+  <button id="helpBtn" title="Help and shortcuts (?)" aria-haspopup="dialog">?</button>
+  <a class="gh" href="./">Docs</a>
+</header>
+<dialog id="help" aria-labelledby="helpTitle">
+  <h2 id="helpTitle">Sprite editor</h2>
+  <p>Pick a colour and draw. When the sprite looks right, use <b>Export → ANSI for GitHub logs</b> and <code>cat</code> the file in a workflow step. The <a href="tutorial.html">tutorial</a> walks through it.</p>
+  <h3>Colours and the legend</h3>
+  <p>Every pixel is a legend character mapped to a colour. Picking a palette colour reuses or adds an entry for you. Click a legend character to paint with it, for example the shaded body <code>B</code>. To recolour an entry everywhere, pick a palette colour, then click the entry's swatch.</p>
+  <h3>Shortcuts</h3>
+  <dl>
+    <dt>P / E / F / I</dt><dd>Pencil, erase, fill, pick</dd>
+    <dt>M</dt><dd>Mirror drawing</dd>
+    <dt>Ctrl+Z / Ctrl+Y</dt><dd>Undo, redo</dd>
+    <dt>?</dt><dd>This help</dd>
+  </dl>
+  <p>Work saves automatically in this browser. Drop a sprite JSON file on the page to open it.</p>
+  <form method="dialog"><button autofocus>Close</button></form>
+</dialog>
+<main>
+  <section id="left" aria-label="Tools and palette">
+    <div id="tools" role="toolbar" aria-label="Tools">
+      <button data-tool="pencil" title="Pencil (P)" aria-pressed="false">Pencil</button>
+      <button data-tool="erase" title="Erase (E)" aria-pressed="false">Erase</button>
+      <button data-tool="fill" title="Fill (F)" aria-pressed="false">Fill</button>
+      <button data-tool="pick" title="Pick a colour from the canvas (I)" aria-pressed="false">Pick</button>
+      <button id="mirrorDraw" title="Mirror drawing (M)" aria-pressed="false">Mirror</button>
+    </div>
+    <div id="selInfo" aria-live="polite"></div>
+    <div id="palette" role="group" aria-label="xterm-256 palette (arrow keys move)"></div>
+  </section>
+  <section id="center" aria-label="Canvas">
+    <div id="tip" class="tip" hidden><span>Draw a sprite for your GitHub Actions logs: pick a colour and paint. Press <kbd>?</kbd> for shortcuts, or follow the <a href="tutorial.html">tutorial</a>.</span><button id="tipClose" aria-label="Dismiss tip">×</button></div>
+    <canvas id="grid" aria-label="Sprite canvas"></canvas>
+    <div id="status"><span id="dims"></span> <span id="coords"></span> <span id="msg" role="status"></span></div>
+    <div class="mini"><h2>In a GitHub log</h2><canvas id="pvMini"></canvas></div>
+  </section>
+  <section id="right" aria-label="Legend and checks">
+    <h2>Legend</h2>
+    <p class="cap">Click a letter to paint with it. Click a swatch to give it the selected colour.</p>
+    <div id="legend"></div>
+    <details id="variants">
+      <summary>Colour variants <span id="tierCount"></span></summary>
+      <p class="cap">A variant (tier) recolours the same sprite. It stores only the entries it changes.</p>
+      <div class="row">
+        <label>Editing <select id="tier"></select></label>
+        <button id="addTier">Add variant</button>
+        <button id="delTier">Delete</button>
+      </div>
+    </details>
+    <h2>Problems <span id="lintCount"></span></h2>
+    <ul id="lint"></ul>
+    <details id="advanced">
+      <summary>Sprite settings</summary>
+      <div class="field">
+        <span class="label">Canvas size</span>
+        <div class="row">
+          <label>W <input type="number" id="gw" min="2" max="64" value="16"></label>
+          <label>H <input type="number" id="gh" min="2" max="64" value="16"></label>
+          <button id="resize">Resize</button>
+        </div>
+      </div>
+      <label class="check"><input type="checkbox" id="mirrorExport"> Store as mirrored half</label>
+      <div class="field">
+        <span class="label">Lighting</span>
+        <div class="row">
+          <label>Dither <input type="number" id="dither" min="0" step="0.1"></label>
+          <label>Rim <input type="number" id="rim" min="0" step="0.1"></label>
+        </div>
+      </div>
+      <div class="field">
+        <span class="label">Add a legend character</span>
+        <div class="row">
+          <input id="newChar" maxlength="1" size="2" aria-label="New legend character" placeholder="T">
+          <button id="addChar">Add</button>
+        </div>
+        <p class="cap"><code>E</code> eyes, <code>T</code> teeth and <code>M</code> mouth win shared cells in GitHub output.</p>
+      </div>
+    </details>
+  </section>
+</main>
+<details id="previews">
+  <summary>Compare outputs</summary>
+  <div class="pv-grid">
+    <div><h3>GitHub log (solid)</h3><canvas id="pvSolid"></canvas></div>
+    <div><h3>Terminal (half)</h3><canvas id="pvHalf"></canvas></div>
+    <div><h3>Half in a GitHub log</h3><p class="cap">Smears: the log viewer draws the glyph shorter than the line.</p><canvas id="pvSmear"></canvas></div>
+    <div><h3>Plain text</h3><pre id="pvPlain"></pre></div>
+  </div>
+  <div id="pvSettings">
+    <span class="label">Log geometry (estimated)</span>
+    <label>Cell width <input type="number" id="cellW" min="4" max="16" step="1"> px</label>
+    <label>Line height <input type="number" id="lineH" min="8" max="32" step="1"> px</label>
+    <label>Glyph / line <input type="number" id="ratio" min="0.5" max="1" step="0.05"></label>
+  </div>
+</details>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

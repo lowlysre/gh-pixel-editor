@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/lowlydba/quest-ops/schema/sprite.schema.json",
-  "title": "QuestOps pixel sprite",
-  "description": "A pixel sprite for terminals with 256 colours. See docs/sprite-format.md.",
+  "$id": "https://lowlysre.github.io/gh-pixel-editor/spec/sprite.schema.json",
+  "title": "Pixel sprite",
+  "description": "A pixel sprite for terminals with 256 colours. See https://lowlysre.github.io/gh-pixel-editor/",
   "type": "object",
   "required": ["version", "name", "rows", "legend"],
   "additionalProperties": false,

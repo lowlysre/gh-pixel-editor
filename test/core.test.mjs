@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { buildFixtures } from "../scripts/gen-fixtures.mjs";
+import { FONT, PAGES, buildPage, renderMarkdown, wordmark } from "../scripts/build-site.mjs";
 import { toAnsi, toSvg } from "../site/js/export.js";
 import { History, blankState, floodFill, fromSprite, setPixel, toSprite } from "../site/js/editor.js";
 import { renderHalf, renderSolid, roundHalfEven, shadeGrid } from "../site/js/render.js";
@@ -13,14 +13,47 @@ import { PALETTE } from "../site/js/xterm.js";
 const spec = (p) => join(import.meta.dirname, "..", "site", "spec", p);
 const slime = JSON.parse(readFileSync(spec("examples/slime.json"), "utf8"));
 
-test("vendored spec matches pinned hashes", () => {
-  const src = JSON.parse(readFileSync(spec("SOURCE.json"), "utf8"));
-  for (const [file, sha] of Object.entries(src.sha256))
-    assert.equal(createHash("sha256").update(readFileSync(spec(file))).digest("hex"), sha, file);
-  assert.match(src.baseCommit, /^[0-9a-f]{40}$/);
+test("site pages are generated from the current Markdown", () => {
+  const site = join(import.meta.dirname, "..", "site");
+  for (const page of PAGES) {
+    const html = readFileSync(join(site, page.out), "utf8").replace(/\r\n/g, "\n");
+    assert.equal(html, buildPage(page, readFileSync(join(site, page.src), "utf8")), `${page.out} is stale; run npm run build-site`);
+  }
 });
 
-test("validator constants match the vendored schema", () => {
+test("site links between pages resolve to generated files", () => {
+  const site = join(import.meta.dirname, "..", "site");
+  for (const page of PAGES) {
+    const html = readFileSync(join(site, page.out), "utf8");
+    for (const [, href] of html.matchAll(/href="([^"#:]+)(#[^"]*)?"/g))
+      if (href !== "./") assert.ok(existsSync(join(site, href)), `${page.out} links to missing ${href}`);
+  }
+});
+
+test("wordmark draws every glyph it is given", () => {
+  for (const [ch, bits] of Object.entries(FONT)) assert.equal(bits.length, 35, `glyph ${ch} must be 5x7`);
+  assert.match(wordmark("Pixel sprite format", 2), /^<svg[^>]+viewBox="0 0 228 16"/);
+  assert.equal((wordmark("I", 1).match(/<rect/g) ?? []).length, 2 * 15);
+});
+
+test("spec Markdown renderer covers the constructs the spec uses", () => {
+  const { title, toc, body } = renderMarkdown(
+    "# T `x`\n\nPara [l](a.json) <b> https://e.com/x\n\n## Sec\n\n| a | b |\n|---|---|\n| `c`1 | **2** |\n\n1. one\n2. two\n\n- u\n\n```\n<x>\n```\n",
+  );
+  assert.equal(title, "T <code>x</code>");
+  assert.deepEqual(toc, [{ id: "sec", html: "Sec" }]);
+  assert.match(body, /<a href="spec\/a\.json">l<\/a> &lt;b&gt; <a href="https:\/\/e\.com\/x">/);
+  assert.match(body, /<ol><li>one<\/li><li>two<\/li><\/ol>/);
+  assert.match(body, /<pre><code>&lt;x&gt;<\/code><\/pre>/);
+  assert.match(body, /<strong>2<\/strong>/);
+});
+
+test("schema $id points at the published spec", () => {
+  const schema = JSON.parse(readFileSync(spec("sprite.schema.json"), "utf8"));
+  assert.equal(schema.$id, "https://lowlysre.github.io/gh-pixel-editor/spec/sprite.schema.json");
+});
+
+test("validator constants match the schema", () => {
   const schema = JSON.parse(readFileSync(spec("sprite.schema.json"), "utf8"));
   assert.deepEqual(Object.keys(schema.properties).sort(), ["legend", "lighting", "mirror", "name", "rows", "tiers", "version"]);
   assert.equal(schema.properties.name.pattern, "^[a-z][a-z0-9-]*$");

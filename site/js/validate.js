@@ -111,7 +111,9 @@ export function lint(sprite) {
 // Editor-only check: exporting with mirror on drops the right half.
 export function mirrorIssues(grid) {
   const w = grid[0].length;
-  if (w % 2) return [{ level: "error", msg: "Mirror export needs an even width." }];
+  if (w % 2) return [{ level: "error", msg: "Store as mirrored half needs an even width.", fix: "mirror-off" }];
   const asym = grid.some((row) => row.some((ch, x) => ch !== row[w - 1 - x]));
-  return asym ? [{ level: "warn", msg: "Grid is not symmetric; mirror export keeps only the left half." }] : [];
+  return asym
+    ? [{ level: "warn", msg: "Store as mirrored half is on, so export drops the right half and this sprite isn't symmetric.", fix: "mirror-off" }]
+    : [];
 }

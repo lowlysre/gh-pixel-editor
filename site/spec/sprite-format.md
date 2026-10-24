@@ -1,9 +1,8 @@
-# Sprite format (v1)
+# Pixel sprite format (v1)
 
-A sprite is one JSON file: a character grid, a legend that maps characters to
-xterm-256 colours, and optional palette tiers. It is data only, so any client
-can read it with a stock JSON parser. [`schema/sprite.schema.json`](../schema/sprite.schema.json)
-is the contract; [`schema/examples/slime.json`](../schema/examples/slime.json) is a full example.
+The pixel sprite format describes small pixel-art characters for GitHub Actions logs. A sprite is one JSON file: a character grid, a legend that maps characters to xterm-256 colours, and optional palette tiers. It is data only, so any client can read it with a stock JSON parser. [`sprite.schema.json`](sprite.schema.json) is the contract; [`examples/slime.json`](examples/slime.json) is a full example.
+
+This repository is the home of the format. The schema's `$id` is its published URL: https://lowlysre.github.io/gh-pixel-editor/spec/sprite.schema.json
 
 ## Fields
 
@@ -23,13 +22,11 @@ Colours are xterm-256 indices (0-255). Truecolor is not representable.
 
 1. Apply `mirror`: pad each row to the widest row, append its reverse.
 2. If the row count is odd, append one transparent row.
-3. A character missing from the legend uses the `B` entry. A sprite without `B`
-   must define every character it uses.
+3. A character missing from the legend uses the `B` entry. A sprite without `B` must define every character it uses.
 
 ## Lighting
 
-A ramp pixel at `(x, y)` in a grid of width `w` and height `h` gets a level in
-`0..n-1` (`n` is the ramp length):
+A ramp pixel at `(x, y)` in a grid of width `w` and height `h` gets a level in `0..n-1` (`n` is the ramp length):
 
 ```
 t     = 0.5 * (1 - x / w) + 0.5 * (1 - y / h)
@@ -39,9 +36,7 @@ level = clamp(round(level), 0, n - 1)
 bayer = [[0.0, 0.5], [0.75, 0.25]]
 ```
 
-Light comes from the top left, outer edges get a dark rim, and the 2x2 dither
-turns the gradient into shading. A flat colour is drawn as-is (no lighting) at
-the brightest shade level (5). Rounding is half to even (Python `round`).
+Light comes from the top left, outer edges get a dark rim, and the 2x2 dither turns the gradient into shading. A flat colour is drawn as-is (no lighting) at the brightest shade level (5). Rounding is half to even (Python `round`).
 
 ## Reserved characters
 
@@ -63,18 +58,14 @@ Every other character is a plain region. `.` is always transparent.
 | `plain` | No colour. Shade glyph by level (`░░▒▒▓█`), `@` for eyes, `v` for teeth, space for void. |
 | `svg` | One `<rect>` per pixel (merge horizontal runs), `shape-rendering="crispEdges"`, colour from the xterm-256 table. |
 
-Never draw a pixel as a bare space: log viewers drop the background of
-whitespace-only text.
+Never draw a pixel as a bare space: log viewers drop the background of whitespace-only text.
 
 ## Authoring for GitHub logs
 
-- Draw eyes, teeth and mouths at least two pixels tall on even rows so they
-  survive `solid` pairing.
+- Draw eyes, teeth and mouths at least two pixels tall on even rows so they survive `solid` pairing.
 - Keep a sprite's height even.
 - Draw text as a label, not as pixels.
 
 ## Conformance
 
-A client conforms when it validates against the schema and, for the example
-sprites, reproduces the reference output of the Python renderer for each target
-byte for byte. Unknown top-level fields are errors; unknown `version` is an error.
+A client conforms when it validates against the schema and, for the example sprites, reproduces the reference output of the Python renderer ([`sprites.py`](https://github.com/lowlydba/quest-ops/blob/main/src/questops/sprites.py) in quest-ops) for each target byte for byte. Unknown top-level fields are errors; unknown `version` is an error.
