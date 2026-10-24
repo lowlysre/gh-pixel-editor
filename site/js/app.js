@@ -128,6 +128,13 @@ function drawLint() {
     const li = document.createElement("li");
     li.className = i.level;
     li.textContent = i.msg;
+    if (i.fix === "mirror-off") {
+      const b = document.createElement("button");
+      b.className = "fix";
+      b.textContent = "Store both halves";
+      b.onclick = () => commit(() => (state.mirror = false));
+      li.append(" ", b);
+    }
     if (i.x !== undefined) {
       li.style.cursor = "pointer";
       li.onclick = () => {

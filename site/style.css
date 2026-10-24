@@ -107,6 +107,7 @@ button.icon:hover:not(:disabled) { color:var(--fg); }
 #lint li.warn::before { background:var(--warn); }
 #lint li.ok { color:var(--ok); }
 #lint li.ok::before { background:var(--ok); }
+#lint button.fix { padding:1px 8px; font-size:12px; margin-top:4px; }
 
 /* compare outputs */
 #previews { margin:0 16px 32px; border-top:1px solid var(--line); padding-top:8px; }
