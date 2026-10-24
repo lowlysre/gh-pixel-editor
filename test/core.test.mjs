@@ -3,7 +3,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { buildFixtures } from "../scripts/gen-fixtures.mjs";
-import { buildPage, renderMarkdown } from "../scripts/build-spec.mjs";
+import { FONT, PAGES, buildPage, renderMarkdown, wordmark } from "../scripts/build-site.mjs";
 import { toAnsi, toSvg } from "../site/js/export.js";
 import { History, blankState, floodFill, fromSprite, setPixel, toSprite } from "../site/js/editor.js";
 import { renderHalf, renderSolid, roundHalfEven, shadeGrid } from "../site/js/render.js";
@@ -13,10 +13,27 @@ import { PALETTE } from "../site/js/xterm.js";
 const spec = (p) => join(import.meta.dirname, "..", "site", "spec", p);
 const slime = JSON.parse(readFileSync(spec("examples/slime.json"), "utf8"));
 
-test("spec homepage is generated from the current Markdown", () => {
-  const md = readFileSync(spec("sprite-format.md"), "utf8");
-  const page = readFileSync(join(import.meta.dirname, "..", "site", "index.html"), "utf8");
-  assert.equal(page.replace(/\r\n/g, "\n"), buildPage(md), "site/index.html is stale; run npm run build-spec");
+test("site pages are generated from the current Markdown", () => {
+  const site = join(import.meta.dirname, "..", "site");
+  for (const page of PAGES) {
+    const html = readFileSync(join(site, page.out), "utf8").replace(/\r\n/g, "\n");
+    assert.equal(html, buildPage(page, readFileSync(join(site, page.src), "utf8")), `${page.out} is stale; run npm run build-site`);
+  }
+});
+
+test("site links between pages resolve to generated files", () => {
+  const site = join(import.meta.dirname, "..", "site");
+  for (const page of PAGES) {
+    const html = readFileSync(join(site, page.out), "utf8");
+    for (const [, href] of html.matchAll(/href="([^"#:]+)(#[^"]*)?"/g))
+      if (href !== "./") assert.ok(existsSync(join(site, href)), `${page.out} links to missing ${href}`);
+  }
+});
+
+test("wordmark draws every glyph it is given", () => {
+  for (const [ch, bits] of Object.entries(FONT)) assert.equal(bits.length, 35, `glyph ${ch} must be 5x7`);
+  assert.match(wordmark("Pixel sprite format", 2), /^<svg[^>]+viewBox="0 0 228 16"/);
+  assert.equal((wordmark("I", 1).match(/<rect/g) ?? []).length, 2 * 15);
 });
 
 test("spec Markdown renderer covers the constructs the spec uses", () => {

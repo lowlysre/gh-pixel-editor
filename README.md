@@ -10,7 +10,7 @@ Home of the **pixel sprite format**: a JSON format for pixel-art sprites that re
 
 [`site/spec/sprite-format.md`](site/spec/sprite-format.md) is the source of truth. The schema is [`site/spec/sprite.schema.json`](site/spec/sprite.schema.json); its `$id` is the published URL above, so keep the file path stable. Examples live in [`site/spec/examples/`](site/spec/examples/).
 
-The site homepage, `site/index.html`, is generated from the Markdown. After editing the spec, run `npm run build-spec`; `npm test` fails while the page is stale.
+The site pages are generated from Markdown: the spec becomes `site/spec.html`, and the tutorial, how-to guides and explanation in `site/docs/` become the other pages. After editing any of them, run `npm run build-site`; `npm test` fails while a page is stale.
 
 `site/js/validate.js` is a hand-written port of the schema (no validator dependency); a test guards its key constants against the schema.
 
@@ -27,7 +27,7 @@ Tools: pencil `P`, erase `E`, fill `F`, pick `I`, mirror-draw `M`, undo/redo `Ct
 ```
 npm run serve       # http://127.0.0.1:8080/ (serves ./site)
 npm test            # node:test, no dependencies
-npm run build-spec  # regenerate site/index.html from the spec Markdown
+npm run build-site  # regenerate the site pages from Markdown
 npm run fixtures    # regenerate fixtures/ from the editor's renderer
 ```
 

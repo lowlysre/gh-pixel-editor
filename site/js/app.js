@@ -2,13 +2,13 @@ import { toAnsi, toPlainText, toSvg } from "./export.js";
 import { History, blankState, floodFill, fromSprite, resizeGrid, restore, setPixel, snapshot, toSprite } from "./editor.js";
 import { TRANSPARENT, effectiveLegend, renderHalf, renderPlain, renderSolid, shadeGrid } from "./render.js";
 import { lint, mirrorIssues } from "./validate.js";
-import { PALETTE, isColor } from "./xterm.js";
+import { PALETTE } from "./xterm.js";
 
 const $ = (id) => document.getElementById(id);
 
 let state = blankState();
 const hist = new History();
-const ui = { tool: "pencil", brush: "B", color: 0, mirrorDraw: false, tier: 0, hl: null, importErrors: null };
+const ui = { tool: "pencil", brush: "B", color: 0, colorBrush: false, mirrorDraw: false, tier: 0, hl: null, importErrors: null };
 const settings = { cellW: 8, lineH: 16, ratio: 0.8, ...JSON.parse(localStorage.getItem("ghpe.settings") ?? "{}") };
 
 const gridCv = $("grid");
@@ -155,101 +155,83 @@ function setEntry(ch, value) {
   });
 }
 
-function slot(value, onSet) {
-  const wrap = document.createElement("span");
-  wrap.className = "slot";
+function swatchButton(ch, step, value, onSet) {
   const sw = document.createElement("button");
+  sw.className = "sw";
   sw.style.background = PALETTE[value] ?? "#000";
-  sw.title = "Set to the selected palette colour";
+  sw.title = `Colour ${value}. Click to use the selected colour (${ui.color}).`;
+  sw.setAttribute("aria-label", `${ch}${step === null ? "" : ` step ${step + 1}`}: colour ${value}. Set to colour ${ui.color}`);
   sw.onclick = () => onSet(ui.color);
-  const num = document.createElement("input");
-  num.type = "number";
-  num.min = 0;
-  num.max = 255;
-  num.value = value;
-  num.setAttribute("aria-label", "xterm colour index");
-  num.onchange = () => {
-    const n = Number(num.value);
-    if (isColor(n)) onSet(n);
-    else num.value = value;
-  };
-  wrap.append(sw, num);
-  return wrap;
+  return sw;
 }
 
+function iconButton(text, title, onClick, disabled = false) {
+  const b = document.createElement("button");
+  b.className = "icon";
+  b.textContent = text;
+  b.title = title;
+  b.setAttribute("aria-label", title);
+  b.disabled = disabled;
+  b.onclick = onClick;
+  return b;
+}
+
+// A flat entry is a ramp of one in the UI: "+" turns it into a ramp, removing
+// the second-to-last step turns it back into a flat colour.
 function drawLegend() {
   const root = $("legend");
   root.replaceChildren();
   const eff = effectiveLegend({ legend: state.legend, tiers: state.tiers }, ui.tier);
   for (const ch of Object.keys(eff)) {
     const v = eff[ch];
+    const steps = Array.isArray(v) ? v : [v];
     const overridden = ui.tier && ch in state.tiers[ui.tier];
     const row = document.createElement("div");
-    row.className = "lrow";
+    row.className = "lrow" + (overridden ? " ovr" : "");
 
     const b = document.createElement("button");
-    b.className = "ch" + (ui.brush === ch ? " brush" : "");
+    b.className = "ch" + (ui.brush === ch && !ui.colorBrush ? " brush" : "");
     b.textContent = ch;
-    b.title = "Use as brush";
+    b.title = `Paint with '${ch}'`;
+    b.setAttribute("aria-pressed", String(ui.brush === ch && !ui.colorBrush));
     b.onclick = () => {
       ui.brush = ch;
+      ui.colorBrush = false;
       ui.tool = ui.tool === "erase" ? "pencil" : ui.tool;
       drawLegend();
       drawTools();
     };
 
-    const type = document.createElement("select");
-    type.setAttribute("aria-label", "colour type");
-    type.innerHTML = '<option value="flat">flat</option><option value="ramp">ramp</option>';
-    type.value = Array.isArray(v) ? "ramp" : "flat";
-    type.onchange = () => setEntry(ch, type.value === "ramp" ? (Array.isArray(v) ? v : [v]) : Array.isArray(v) ? v[v.length - 1] : v);
+    const strip = document.createElement("span");
+    strip.className = "strip";
+    steps.forEach((c, i) =>
+      strip.append(
+        swatchButton(ch, Array.isArray(v) ? i : null, c, (n) =>
+          setEntry(ch, Array.isArray(v) ? v.map((x, j) => (j === i ? n : x)) : n),
+        ),
+      ),
+    );
 
-    row.append(b, type);
-    const slots = document.createElement("span");
-    slots.className = Array.isArray(v) ? "slots ramp" : "slots";
-    if (Array.isArray(v)) {
-      v.forEach((c, i) => slots.append(slot(c, (n) => setEntry(ch, v.map((x, j) => (j === i ? n : x))))));
-      const add = document.createElement("button");
-      add.textContent = "+";
-      add.title = "Add ramp step";
-      add.disabled = v.length >= 16;
-      add.onclick = () => setEntry(ch, [...v, v[v.length - 1]]);
-      const del = document.createElement("button");
-      del.textContent = "−";
-      del.title = "Remove last ramp step";
-      del.disabled = v.length <= 1;
-      del.onclick = () => setEntry(ch, v.slice(0, -1));
-      row.append(add, del);
-    } else slots.append(slot(v, (n) => setEntry(ch, n)));
-
-    const rm = document.createElement("button");
-    rm.textContent = ui.tier ? "reset" : "×";
-    rm.title = ui.tier ? "Drop this tier override" : "Remove legend entry";
-    rm.disabled = ui.tier && !overridden;
-    rm.onclick = () =>
-      commit(() => {
-        delete tierLegend()[ch];
-      });
-    row.append(rm);
-    if (overridden) {
-      const dot = document.createElement("span");
-      dot.className = "ovr";
-      dot.textContent = "●";
-      dot.title = "Overridden in this tier";
-      row.append(dot);
-    }
-    row.append(slots);
+    const add = iconButton("+", `Add a shade to '${ch}'`, () => setEntry(ch, [...steps, steps[steps.length - 1]]), steps.length >= 16);
+    const del = iconButton("−", `Remove a shade from '${ch}'`, () => setEntry(ch, steps.length === 2 ? steps[1] : steps.slice(0, -1)), !Array.isArray(v) || steps.length <= 1);
+    const rm = ui.tier
+      ? iconButton("↺", `Use the base colour for '${ch}' in this variant`, () => commit(() => delete tierLegend()[ch]), !overridden)
+      : iconButton("×", `Remove '${ch}' from the legend`, () => commit(() => delete tierLegend()[ch]));
+    row.append(b, strip, add, del, rm);
     root.append(row);
   }
 }
 
 function drawTierSelect() {
   const sel = $("tier");
-  sel.replaceChildren(new Option("Base", "0"));
-  for (const t of Object.keys(state.tiers).map(Number).sort((a, b) => a - b)) sel.append(new Option(`Tier ${t}`, String(t)));
+  sel.replaceChildren(new Option("Base colours", "0"));
+  const tiers = Object.keys(state.tiers).map(Number).sort((a, b) => a - b);
+  for (const t of tiers) sel.append(new Option(`Variant ${t}`, String(t)));
   if (!(ui.tier === 0 || ui.tier in state.tiers)) ui.tier = 0;
   sel.value = String(ui.tier);
   $("delTier").disabled = !ui.tier;
+  $("tierCount").textContent = tiers.length ? `(${tiers.length})` : "";
+  if (tiers.length) $("variants").open = true;
 }
 
 // ---- chrome ---------------------------------------------------------------
@@ -258,10 +240,19 @@ function drawTools() {
     b.classList.toggle("on", b.dataset.tool === ui.tool);
     b.setAttribute("aria-pressed", String(b.dataset.tool === ui.tool));
   });
-  $("mirrorDraw").textContent = `Mirror: ${ui.mirrorDraw ? "on" : "off"}`;
   $("mirrorDraw").classList.toggle("on", ui.mirrorDraw);
   $("mirrorDraw").setAttribute("aria-pressed", String(ui.mirrorDraw));
-  $("selInfo").textContent = `Colour ${ui.color} ${PALETTE[ui.color]} · brush '${ui.brush}'`;
+  const chip = document.createElement("span");
+  chip.className = "chip";
+  if (ui.colorBrush) {
+    chip.style.background = PALETTE[ui.color];
+    $("selInfo").replaceChildren(chip, `Colour ${ui.color}`);
+  } else {
+    const v = effectiveLegend({ legend: state.legend, tiers: state.tiers }, ui.tier)[ui.brush];
+    const top = Array.isArray(v) ? v[v.length - 1] : v;
+    chip.style.background = PALETTE[top] ?? "transparent";
+    $("selInfo").replaceChildren(chip, `Legend '${ui.brush}'${Array.isArray(v) ? " (shaded)" : ""}`);
+  }
   swatches.forEach((b, i) => {
     b.classList.toggle("sel", i === ui.color);
     b.setAttribute("aria-pressed", String(i === ui.color));
@@ -329,6 +320,7 @@ function apply(x, y, first) {
     const ch = grid[y][x];
     if (ch !== TRANSPARENT) {
       ui.brush = ch;
+      ui.colorBrush = false;
       const p = shadeGrid(renderSprite(), ui.tier).px[y][x];
       if (p) ui.color = p.color;
       ui.tool = "pencil";
@@ -338,10 +330,34 @@ function apply(x, y, first) {
   }
 }
 
+// Palette colours paint through a flat legend entry: reuse one with that colour,
+// else add one. E, T and M are never reused because they change solid ranking.
+const RESERVED = "BETM";
+const NEW_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789ACDFGHIJKLNOPQRSUVWXYZ";
+function colorChar() {
+  const eff = effectiveLegend({ legend: state.legend, tiers: state.tiers }, ui.tier);
+  const hit = Object.keys(eff).find((ch) => eff[ch] === ui.color && !"ETM".includes(ch));
+  if (hit) return hit;
+  const used = new Set([...Object.keys(state.legend), ...Object.values(state.tiers).flatMap(Object.keys)]);
+  const ch = [...NEW_CHARS].find((c) => !used.has(c) && !RESERVED.includes(c));
+  if (!ch) return null;
+  state.legend[ch] = ui.color;
+  if (ui.tier) state.tiers[ui.tier][ch] = ui.color;
+  return ch;
+}
+
 gridCv.addEventListener("pointerdown", (e) => {
   gridCv.setPointerCapture(e.pointerId);
   ui.hl = null;
   stroke = { before: snapshot(state), last: null };
+  if (ui.colorBrush && (ui.tool === "pencil" || ui.tool === "fill")) {
+    const ch = colorChar();
+    if (!ch) {
+      stroke = null;
+      return flash("Legend is full; reuse an existing entry");
+    }
+    ui.brush = ch;
+  }
   const [x, y] = cellAt(e);
   stroke.last = `${x},${y}`;
   apply(x, y, true);
@@ -379,6 +395,9 @@ function swatch(i) {
   b.setAttribute("aria-label", `colour ${i}`);
   b.onclick = () => {
     ui.color = i;
+    ui.colorBrush = true;
+    if (ui.tool === "erase" || ui.tool === "pick") ui.tool = "pencil";
+    drawLegend();
     drawTools();
   };
   swatches[i] = b;
@@ -484,18 +503,34 @@ function download(name, text, type) {
   a.click();
   URL.revokeObjectURL(a.href);
 }
-$("exportJson").onclick = () => download(`${state.name}.json`, JSON.stringify(toSprite(state), null, 2) + "\n", "application/json");
-$("exportSvg").onclick = () => download(`${state.name}.svg`, toSvg(shadeGrid(renderSprite(), ui.tier), state.name), "image/svg+xml");
-$("copyAnsi").onclick = async () => {
+const ansiText = (target) => {
   const g = shadeGrid(renderSprite(), ui.tier);
-  const text = toAnsi($("ansiTarget").value === "half" ? renderHalf(g) : renderSolid(g));
-  try {
-    await navigator.clipboard.writeText(text);
-    flash("ANSI copied");
-  } catch {
-    flash("Clipboard unavailable");
-  }
+  return toAnsi(target === "half" ? renderHalf(g) : renderSolid(g));
 };
+const exporters = {
+  "ansi-solid": () => download(`${state.name}.ans`, ansiText("solid"), "text/plain"),
+  "ansi-half": () => download(`${state.name}.half.ans`, ansiText("half"), "text/plain"),
+  json: () => download(`${state.name}.json`, JSON.stringify(toSprite(state), null, 2) + "\n", "application/json"),
+  svg: () => download(`${state.name}.svg`, toSvg(shadeGrid(renderSprite(), ui.tier), state.name), "image/svg+xml"),
+  "copy-solid": async () => {
+    try {
+      await navigator.clipboard.writeText(ansiText("solid"));
+      flash("ANSI copied");
+    } catch {
+      flash("Clipboard unavailable");
+    }
+  },
+};
+document.querySelectorAll("[data-export]").forEach((b) => (b.onclick = () => exporters[b.dataset.export]()));
+
+// Menus close after a choice, on Escape, or on a click outside.
+const menus = [...document.querySelectorAll("details.menu")];
+for (const m of menus) {
+  m.addEventListener("click", (e) => e.target.closest(".menu-items button") && (m.open = false));
+  m.addEventListener("toggle", () => m.open && menus.forEach((o) => o !== m && (o.open = false)));
+}
+document.addEventListener("click", (e) => menus.forEach((m) => !m.contains(e.target) && (m.open = false)));
+document.addEventListener("keydown", (e) => e.key === "Escape" && menus.forEach((m) => (m.open = false)));
 
 $("importBtn").onclick = () => $("importFile").click();
 $("importFile").onchange = async (e) => {
@@ -607,7 +642,8 @@ if (saved) {
     refreshAll();
   });
 }
-if (!localStorage.getItem("ghpe.seenHelp")) {
-  localStorage.setItem("ghpe.seenHelp", "1");
-  help.showModal();
-}
+if (!localStorage.getItem("ghpe.tipDismissed")) $("tip").hidden = false;
+$("tipClose").onclick = () => {
+  $("tip").hidden = true;
+  localStorage.setItem("ghpe.tipDismissed", "1");
+};

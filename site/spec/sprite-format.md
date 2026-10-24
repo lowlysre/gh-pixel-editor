@@ -1,6 +1,6 @@
 # Pixel sprite format (v1)
 
-A sprite is one JSON file: a character grid, a legend that maps characters to xterm-256 colours, and optional palette tiers. It is data only, so any client can read it with a stock JSON parser. [`sprite.schema.json`](sprite.schema.json) is the contract; [`examples/slime.json`](examples/slime.json) is a full example.
+The pixel sprite format describes small pixel-art characters for GitHub Actions logs. A sprite is one JSON file: a character grid, a legend that maps characters to xterm-256 colours, and optional palette tiers. It is data only, so any client can read it with a stock JSON parser. [`sprite.schema.json`](sprite.schema.json) is the contract; [`examples/slime.json`](examples/slime.json) is a full example.
 
 This repository is the home of the format. The schema's `$id` is its published URL: https://lowlysre.github.io/gh-pixel-editor/spec/sprite.schema.json
 
