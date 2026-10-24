@@ -3,6 +3,12 @@
   "private": true,
   "type": "module",
   "description": "Static pixel-art sprite editor for GitHub Actions log art. No runtime dependencies, no build step.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lowlysre/gh-pixel-editor.git"
+  },
+  "homepage": "https://lowlysre.github.io/gh-pixel-editor/",
   "scripts": {
     "test": "node --test",
     "fixtures": "node scripts/gen-fixtures.mjs",

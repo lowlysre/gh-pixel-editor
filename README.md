@@ -2,6 +2,8 @@
 
 Static pixel-art sprite editor for GitHub Actions log art ([quest-ops](https://github.com/lowlydba/quest-ops) sprite format v1). Vanilla JS/HTML/CSS, no build step, no runtime dependencies.
 
+Live editor: [lowlysre.github.io/gh-pixel-editor](https://lowlysre.github.io/gh-pixel-editor/)
+
 GitHub's log viewer paints a background over the whole line but a glyph over a shorter box, so two-colour half-block cells smear. The **Solid** preview shows a sprite under the CI constraint (one colour per text cell, `▀` with fg = bg); **Half** shows the terminal result; the smear preview models the log viewer.
 
 ## Use
@@ -37,3 +39,7 @@ Choices the spec leaves open, all unverified against the reference renderer:
 - `half`: a cell with only a bottom pixel uses `▄` (fg = bottom, no bg).
 - ANSI run-merging and the `ESC[0m` placement.
 - GitHub log line height and glyph aspect ratio are **unmeasured**; the preview geometry (cell width, line height, glyph/line ratio) is configurable and its defaults are guesses.
+
+## License
+
+[MIT](LICENSE). The vendored spec in `site/spec/` comes from [quest-ops](https://github.com/lowlydba/quest-ops), also MIT under the same copyright holder.
