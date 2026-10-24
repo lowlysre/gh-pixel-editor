@@ -20,7 +20,7 @@ The canvas shows the shaded result. Lighting picks a shade from the ramp for eac
 
 ## 3. Add eyes
 
-Click `E` in the legend and paint two eyes. Make each eye two pixels tall, starting on an even row. The brighter horizontal grid lines mark where each pair of rows starts; hovering the canvas shows the row number.
+Select **Pencil** (`P`), then click `E` in the legend and paint two eyes. Make each eye two pixels tall, starting on an even row. The brighter horizontal grid lines mark where each pair of rows starts; hovering the canvas shows the row number.
 
 Two pixel rows share one line of text in a log. An eye one pixel tall can lose that line to the body, and the **Problems** panel warns when this can happen.
 

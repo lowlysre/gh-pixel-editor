@@ -155,6 +155,7 @@ function drawLint() {
 
 // ---- legend ---------------------------------------------------------------
 const tierLegend = () => (ui.tier ? state.tiers[ui.tier] : state.legend);
+const defaultBrush = () => ("B" in state.legend ? "B" : (Object.keys(state.legend)[0] ?? "B"));
 
 function setEntry(ch, value) {
   commit(() => {
@@ -345,7 +346,11 @@ function colorChar() {
   const eff = effectiveLegend({ legend: state.legend, tiers: state.tiers }, ui.tier);
   const hit = Object.keys(eff).find((ch) => eff[ch] === ui.color && !"ETM".includes(ch));
   if (hit) return hit;
-  const used = new Set([...Object.keys(state.legend), ...Object.values(state.tiers).flatMap(Object.keys)]);
+  const used = new Set([
+    ...Object.keys(state.legend),
+    ...Object.values(state.tiers).flatMap(Object.keys),
+    ...state.grid.flat(),
+  ]);
   const ch = [...NEW_CHARS].find((c) => !used.has(c) && !RESERVED.includes(c));
   if (!ch) return null;
   state.legend[ch] = ui.color;
@@ -561,7 +566,7 @@ function loadText(text) {
   commit(() => {
     state = fromSprite(obj);
     ui.tier = 0;
-    ui.brush = "B" in state.legend ? "B" : Object.keys(state.legend)[0] ?? "B";
+    ui.brush = defaultBrush();
   });
 }
 const hasFiles = (e) => e.dataTransfer?.types.includes("Files");
@@ -641,6 +646,7 @@ const saved = (() => {
 })();
 if (saved) {
   state = saved;
+  ui.brush = defaultBrush();
   refreshAll();
 } else {
   refreshAll();

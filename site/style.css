@@ -10,6 +10,7 @@ body { margin:0; background:var(--bg); color:var(--fg); font:13px/1.45 system-ui
 a { color:var(--acc); }
 :focus-visible { outline:2px solid var(--acc); outline-offset:1px; }
 .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+[hidden] { display:none !important; }
 code, kbd { font:12px var(--mono); }
 kbd { border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; padding:0 4px; }
 
