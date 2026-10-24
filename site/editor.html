@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sprite editor · Pixel sprite format</title>
+<meta name="description" content="Draw pixel-art sprites that render cleanly in GitHub Actions logs. Previews the log viewer, exports sprite JSON, SVG and ANSI. Runs in the browser, no install.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Pixel sprite editor">
+<meta property="og:description" content="Draw pixel-art sprites that render cleanly in GitHub Actions logs.">
+<meta property="og:url" content="https://lowlysre.github.io/gh-pixel-editor/editor.html">
+<meta name="theme-color" content="#0d1117">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1><a class="brand" href="./" title="Back to the spec"><img src="favicon.svg" alt="" width="18" height="18"> Sprite editor</a></h1>
+  <span class="tagline">Pixel sprites for GitHub Actions logs</span>
+  <input id="name" aria-label="Sprite name" size="14" spellcheck="false">
+  <label><input type="checkbox" id="mirrorExport"> export as mirrored half</label>
+  <span class="grow"></span>
+  <button id="exampleBtn" title="Load the slime example">Example</button>
+  <button id="undo" title="Ctrl+Z">Undo</button>
+  <button id="redo" title="Ctrl+Y">Redo</button>
+  <button id="importBtn">Import JSON</button>
+  <input type="file" id="importFile" accept=".json,application/json" hidden>
+  <button id="exportJson">Export JSON</button>
+  <button id="exportSvg">Export SVG</button>
+  <select id="ansiTarget" aria-label="ANSI target"><option value="solid">solid</option><option value="half">half</option></select>
+  <button id="copyAnsi">Copy ANSI</button>
+  <button id="helpBtn" title="Help (?)" aria-haspopup="dialog">?</button>
+  <a class="gh" href="./">Spec</a>
+  <a class="gh" href="https://github.com/lowlysre/gh-pixel-editor" title="Source on GitHub">GitHub</a>
+</header>
+<dialog id="help" aria-labelledby="helpTitle">
+  <h2 id="helpTitle">Sprite editor</h2>
+  <p>Draw pixel-art sprites for GitHub Actions logs in the <a href="./">pixel sprite format</a>.</p>
+  <h3>How painting works</h3>
+  <p>You paint legend characters, not colours. Each character maps to one xterm-256 colour, or to a ramp that lighting shades across. To change a character's colour, pick a palette colour, then click that character's swatch in the legend.</p>
+  <h3>Previews</h3>
+  <p><b>Solid</b> is what to put in CI logs. <b>Half</b> looks sharper in a terminal but smears in GitHub's log viewer.</p>
+  <h3>Shortcuts</h3>
+  <dl>
+    <dt>P / E / F / I</dt><dd>Pencil, erase, fill, pick</dd>
+    <dt>M</dt><dd>Mirror drawing</dd>
+    <dt>Ctrl+Z / Ctrl+Y</dt><dd>Undo, redo</dd>
+    <dt>?</dt><dd>This help</dd>
+  </dl>
+  <p>Your work saves automatically in this browser. Drop a sprite JSON file anywhere on the page to import it.</p>
+  <form method="dialog"><button autofocus>Start drawing</button></form>
+</dialog>
+<main>
+  <section id="left">
+    <div id="tools">
+      <button data-tool="pencil" title="P" aria-pressed="false">Pencil</button>
+      <button data-tool="erase" title="E" aria-pressed="false">Erase</button>
+      <button data-tool="fill" title="F" aria-pressed="false">Fill</button>
+      <button data-tool="pick" title="I" aria-pressed="false">Pick</button>
+      <button id="mirrorDraw" title="M" aria-pressed="false">Mirror: off</button>
+    </div>
+    <div id="palette" role="group" aria-label="xterm-256 palette (arrow keys move)"></div>
+    <div id="selInfo"></div>
+    <p class="cap">Painting uses legend characters. Click a legend swatch to give it this colour.</p>
+    <div class="row">
+      <label>W <input type="number" id="gw" min="2" max="64" value="16"></label>
+      <label>H <input type="number" id="gh" min="2" max="64" value="16"></label>
+      <button id="resize">Resize</button>
+      <button id="newBtn">New</button>
+    </div>
+  </section>
+  <section id="center">
+    <canvas id="grid"></canvas>
+    <div id="status"><span id="dims"></span> <span id="coords"></span> <span id="msg" role="status"></span></div>
+    <div class="mini"><h3>Solid preview</h3><canvas id="pvMini"></canvas></div>
+  </section>
+  <section id="right">
+    <h2>Legend</h2>
+    <div class="row">
+      <label>Palette tier <select id="tier"></select></label>
+      <button id="addTier">+ tier</button>
+      <button id="delTier">- tier</button>
+    </div>
+    <div id="legend"></div>
+    <div class="row">
+      <input id="newChar" maxlength="1" size="2" aria-label="New legend character" placeholder="c">
+      <button id="addChar">Add char</button>
+    </div>
+    <h2>Lighting</h2>
+    <div class="row">
+      <label>dither <input type="number" id="dither" min="0" step="0.1"></label>
+      <label>rim <input type="number" id="rim" min="0" step="0.1"></label>
+    </div>
+    <h2>Lint <span id="lintCount"></span></h2>
+    <ul id="lint"></ul>
+  </section>
+</main>
+<section id="previews">
+  <div id="pvSettings">
+    <h3>Preview geometry <small>(unverified)</small></h3>
+    <label>cell width px <input type="number" id="cellW" min="4" max="16" step="1"></label>
+    <label>line height px <input type="number" id="lineH" min="8" max="32" step="1"></label>
+    <label>glyph / line ratio <input type="number" id="ratio" min="0.5" max="1" step="0.05"></label>
+    <p>GitHub's log line height and glyph aspect are not measured. Defaults are guesses.</p>
+  </div>
+
+  <div><h3>Solid: use in GitHub logs</h3><p class="cap">One colour per text cell. What CI output looks like.</p><canvas id="pvSolid"></canvas></div>
+  <div><h3>Half: in a real terminal</h3><p class="cap">Two colours per cell (top and bottom pixel). Crisp where the glyph fills the line.</p><canvas id="pvHalf"></canvas></div>
+  <div><h3>Half: pasted into a GitHub log</h3><p class="cap">Same output as the terminal, drawn the way the log viewer paints it: the background covers the full line, the glyph only part of it, so cells smear. This is why Solid exists.</p><canvas id="pvSmear"></canvas></div>
+  <div><h3>Plain</h3><pre id="pvPlain"></pre></div>
+</section>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -81,7 +81,7 @@ function drawGrid() {
 
 // ---- previews -------------------------------------------------------------
 // Models GitHub's log: background fills the whole line, glyph only a (ratio * line) tall box.
-function drawCells(canvas, cells, { cellW, lineH, ratio }) {
+function drawCells(canvas, cells, { cellW, lineH, ratio }, fitPx = 480) {
   const cols = cells[0].length;
   canvas.width = cols * cellW;
   canvas.height = cells.length * lineH;
@@ -103,7 +103,7 @@ function drawCells(canvas, cells, { cellW, lineH, ratio }) {
       c.fillRect(x, Math.round(gy), cellW, Math.max(1, Math.round(half)));
     }),
   );
-  const s = Math.max(1, Math.floor(480 / canvas.width));
+  const s = Math.max(1, Math.floor(fitPx / canvas.width));
   canvas.style.width = `${canvas.width * s}px`;
   canvas.style.height = `${canvas.height * s}px`;
 }
@@ -111,7 +111,9 @@ function drawCells(canvas, cells, { cellW, lineH, ratio }) {
 function drawPreviews() {
   const g = shadeGrid(renderSprite(), ui.tier);
   const ideal = { ...settings, ratio: 1 };
-  drawCells($("pvSolid"), renderSolid(g), settings);
+  const solid = renderSolid(g);
+  drawCells($("pvSolid"), solid, settings);
+  drawCells($("pvMini"), solid, settings, 240);
   drawCells($("pvHalf"), renderHalf(g), ideal);
   drawCells($("pvSmear"), renderHalf(g), settings);
   $("pvPlain").textContent = renderPlain(g).join("\n");
@@ -203,8 +205,10 @@ function drawLegend() {
     type.onchange = () => setEntry(ch, type.value === "ramp" ? (Array.isArray(v) ? v : [v]) : Array.isArray(v) ? v[v.length - 1] : v);
 
     row.append(b, type);
+    const slots = document.createElement("span");
+    slots.className = Array.isArray(v) ? "slots ramp" : "slots";
     if (Array.isArray(v)) {
-      v.forEach((c, i) => row.append(slot(c, (n) => setEntry(ch, v.map((x, j) => (j === i ? n : x))))));
+      v.forEach((c, i) => slots.append(slot(c, (n) => setEntry(ch, v.map((x, j) => (j === i ? n : x))))));
       const add = document.createElement("button");
       add.textContent = "+";
       add.title = "Add ramp step";
@@ -216,7 +220,7 @@ function drawLegend() {
       del.disabled = v.length <= 1;
       del.onclick = () => setEntry(ch, v.slice(0, -1));
       row.append(add, del);
-    } else row.append(slot(v, (n) => setEntry(ch, n)));
+    } else slots.append(slot(v, (n) => setEntry(ch, n)));
 
     const rm = document.createElement("button");
     rm.textContent = ui.tier ? "reset" : "×";
@@ -234,6 +238,7 @@ function drawLegend() {
       dot.title = "Overridden in this tier";
       row.append(dot);
     }
+    row.append(slots);
     root.append(row);
   }
 }
@@ -249,11 +254,19 @@ function drawTierSelect() {
 
 // ---- chrome ---------------------------------------------------------------
 function drawTools() {
-  document.querySelectorAll("[data-tool]").forEach((b) => b.classList.toggle("on", b.dataset.tool === ui.tool));
+  document.querySelectorAll("[data-tool]").forEach((b) => {
+    b.classList.toggle("on", b.dataset.tool === ui.tool);
+    b.setAttribute("aria-pressed", String(b.dataset.tool === ui.tool));
+  });
   $("mirrorDraw").textContent = `Mirror: ${ui.mirrorDraw ? "on" : "off"}`;
   $("mirrorDraw").classList.toggle("on", ui.mirrorDraw);
+  $("mirrorDraw").setAttribute("aria-pressed", String(ui.mirrorDraw));
   $("selInfo").textContent = `Colour ${ui.color} ${PALETTE[ui.color]} · brush '${ui.brush}'`;
-  document.querySelectorAll("#palette button").forEach((b, i) => b.classList.toggle("sel", i === ui.color));
+  swatches.forEach((b, i) => {
+    b.classList.toggle("sel", i === ui.color);
+    b.setAttribute("aria-pressed", String(i === ui.color));
+    b.tabIndex = i === ui.color ? 0 : -1;
+  });
 }
 
 function refreshPixels() {
@@ -261,7 +274,23 @@ function refreshPixels() {
   drawPreviews();
   drawLint();
   const h = state.grid.length;
-  $("status").textContent = `${state.grid[0].length}×${h} px · ${Math.ceil(h / 2)} text rows`;
+  $("dims").textContent = `${state.grid[0].length}×${h} px · ${Math.ceil(h / 2)} text rows`;
+}
+
+let msgTimer;
+function flash(text) {
+  $("msg").textContent = text;
+  clearTimeout(msgTimer);
+  msgTimer = setTimeout(() => ($("msg").textContent = ""), 3000);
+}
+
+const SAVE_KEY = "ghpe.sprite";
+function save() {
+  try {
+    localStorage.setItem(SAVE_KEY, snapshot(state));
+  } catch {
+    flash("Autosave failed: browser storage unavailable");
+  }
 }
 
 function refreshAll() {
@@ -278,6 +307,7 @@ function refreshAll() {
   drawLegend();
   drawTools();
   refreshPixels();
+  save();
 }
 
 // ---- pointer --------------------------------------------------------------
@@ -318,13 +348,16 @@ gridCv.addEventListener("pointerdown", (e) => {
   refreshPixels();
 });
 gridCv.addEventListener("pointermove", (e) => {
-  if (!stroke) return;
   const [x, y] = cellAt(e);
+  const ch = state.grid[y]?.[x];
+  $("coords").textContent = ch === undefined ? "" : `x ${x}, y ${y} · '${ch}'`;
+  if (!stroke) return;
   if (stroke.last === `${x},${y}`) return;
   stroke.last = `${x},${y}`;
   apply(x, y, false);
   refreshPixels();
 });
+gridCv.addEventListener("pointerleave", () => ($("coords").textContent = ""));
 const endStroke = () => {
   if (!stroke) return;
   const changed = snapshot(state) !== stroke.before;
@@ -336,16 +369,68 @@ gridCv.addEventListener("pointerup", endStroke);
 gridCv.addEventListener("pointercancel", endStroke);
 
 // ---- wiring ---------------------------------------------------------------
-PALETTE.forEach((hex, i) => {
+// xterm-256 laid out by structure: 16 system colours, the 6x6x6 cube as six
+// 6x6 blocks (one per red level; green down, blue across), then the grey ramp.
+const swatches = [];
+function swatch(i) {
   const b = document.createElement("button");
-  b.style.background = hex;
-  b.title = `${i} ${hex}`;
+  b.style.background = PALETTE[i];
+  b.title = `${i} ${PALETTE[i]}`;
   b.setAttribute("aria-label", `colour ${i}`);
   b.onclick = () => {
     ui.color = i;
     drawTools();
   };
-  $("palette").append(b);
+  swatches[i] = b;
+  return b;
+}
+function palGroup(label, cls, children) {
+  const h = document.createElement("div");
+  h.className = "pal-label";
+  h.textContent = label;
+  const g = document.createElement("div");
+  g.className = `pal ${cls}`;
+  g.append(...children);
+  $("palette").append(h, g);
+}
+const range = (a, n) => Array.from({ length: n }, (_, k) => a + k);
+palGroup("System", "pal-sys", range(0, 16).map(swatch));
+palGroup(
+  "Colour cube",
+  "pal-cube",
+  range(0, 6).map((r) => {
+    const block = document.createElement("div");
+    block.className = "pal-block";
+    block.append(...range(16 + 36 * r, 36).map(swatch));
+    return block;
+  }),
+);
+palGroup("Greys", "pal-grey", range(232, 24).map(swatch));
+
+// Arrow keys move to the nearest swatch on screen in that direction.
+$("palette").addEventListener("keydown", (e) => {
+  const dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+  if (!dir) return;
+  e.preventDefault();
+  const centre = (b) => {
+    const r = b.getBoundingClientRect();
+    return [r.left + r.width / 2, r.top + r.height / 2];
+  };
+  const [cx, cy] = centre(swatches[ui.color]);
+  let best = null;
+  let bestScore = Infinity;
+  swatches.forEach((b, i) => {
+    const [x, y] = centre(b);
+    const along = (x - cx) * dir[0] + (y - cy) * dir[1];
+    if (along < 1) return;
+    const across = Math.abs(dir[0] ? y - cy : x - cx);
+    const score = along + across * 4;
+    if (score < bestScore) [best, bestScore] = [i, score];
+  });
+  if (best === null) return;
+  ui.color = best;
+  drawTools();
+  swatches[best].focus();
 });
 
 document.querySelectorAll("[data-tool]").forEach((b) => (b.onclick = () => ((ui.tool = b.dataset.tool), drawTools())));
@@ -406,9 +491,9 @@ $("copyAnsi").onclick = async () => {
   const text = toAnsi($("ansiTarget").value === "half" ? renderHalf(g) : renderSolid(g));
   try {
     await navigator.clipboard.writeText(text);
-    $("status").textContent = "ANSI copied";
+    flash("ANSI copied");
   } catch {
-    $("status").textContent = "Clipboard unavailable";
+    flash("Clipboard unavailable");
   }
 };
 
@@ -437,9 +522,17 @@ function loadText(text) {
     ui.brush = "B" in state.legend ? "B" : Object.keys(state.legend)[0] ?? "B";
   });
 }
-document.addEventListener("dragover", (e) => e.preventDefault());
+const hasFiles = (e) => e.dataTransfer?.types.includes("Files");
+document.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  if (hasFiles(e)) document.body.classList.add("dragging");
+});
+document.addEventListener("dragleave", (e) => {
+  if (!e.relatedTarget) document.body.classList.remove("dragging");
+});
 document.addEventListener("drop", async (e) => {
   e.preventDefault();
+  document.body.classList.remove("dragging");
   const file = e.dataTransfer.files[0];
   if (file) loadText(await file.text());
 });
@@ -457,6 +550,7 @@ for (const k of ["cellW", "lineH", "ratio"]) {
 
 document.addEventListener("keydown", (e) => {
   if (/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+  if (e.key === "?") return toggleHelp();
   const k = e.key.toLowerCase();
   if ((e.ctrlKey || e.metaKey) && (k === "z" || k === "y")) {
     e.preventDefault();
@@ -471,14 +565,49 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+// ---- help -----------------------------------------------------------------
+const help = $("help");
+function toggleHelp() {
+  if (help.open) help.close();
+  else help.showModal();
+}
+$("helpBtn").onclick = toggleHelp;
+
 // ---- boot -----------------------------------------------------------------
-refreshAll();
-fetch("spec/examples/slime.json")
-  .then((r) => r.json())
-  .then((s) => {
-    state = fromSprite(s);
-    ui.brush = "B";
-    ui.color = 86;
+function loadExample() {
+  return fetch("spec/examples/slime.json")
+    .then((r) => r.json())
+    .then((s) =>
+      commit(() => {
+        state = fromSprite(s);
+        ui.tier = 0;
+        ui.brush = "B";
+        ui.color = 86;
+      }),
+    )
+    .catch(() => flash("Example failed to load"));
+}
+$("exampleBtn").onclick = loadExample;
+
+const saved = (() => {
+  try {
+    const s = restore(localStorage.getItem(SAVE_KEY));
+    return Array.isArray(s?.grid?.[0]) ? s : null;
+  } catch {
+    return null;
+  }
+})();
+if (saved) {
+  state = saved;
+  refreshAll();
+} else {
+  refreshAll();
+  loadExample().then(() => {
+    hist.undoStack.length = 0;
     refreshAll();
-  })
-  .catch(() => {});
+  });
+}
+if (!localStorage.getItem("ghpe.seenHelp")) {
+  localStorage.setItem("ghpe.seenHelp", "1");
+  help.showModal();
+}
